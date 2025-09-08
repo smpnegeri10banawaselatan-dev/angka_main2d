@@ -60,10 +60,10 @@
         <h2 class="font-semibold">Hasil Singkat (<span id="jumlah"></span> angka)</h2>
         <button onclick="salin()" class="text-sm bg-gray-200 px-2 py-1 rounded">Salin</button>
       </div>
-      <div id="hasilSingkat" class="border p-2 rounded bg-gray-50 whitespace-pre-wrap break-words"></div>
+      <div id="hasilSingkat" class="border p-2 rounded bg-gray-50 break-words whitespace-pre-wrap"></div>
 
       <h2 class="font-semibold mt-4">Hasil Detail</h2>
-      <div id="hasilDetail" class="border p-2 rounded bg-gray-50 whitespace-pre-wrap break-words"></div>
+      <div id="hasilDetail" class="border p-2 rounded bg-gray-50 break-words whitespace-pre-wrap"></div>
     </div>
   </div>
 
@@ -87,11 +87,18 @@ function buatShioMap() {
 const shioMap = buatShioMap();
 
 function proses() {
-  const deretRaw = document.getElementById("deret").value.split("*").map(s => s.trim()).filter(Boolean);
+  // Ambil deret, hapus spasi kosong
+  const deretRaw = document.getElementById("deret").value
+                    .split("*")
+                    .map(s => s.trim())
+                    .filter(Boolean);
+
   const main = document.getElementById("main").value.trim();
   const mode = document.getElementById("mode").value;
   const jenis = document.getElementById("jenis").value;
-  const shioSelected = Array.from(document.getElementById("shio").selectedOptions).map(o => o.value).filter(Boolean);
+  const shioSelected = Array.from(document.getElementById("shio").selectedOptions)
+                            .map(o => o.value)
+                            .filter(Boolean);
 
   // transform angka sesuai jenis
   const deret = deretRaw.map(num => {
@@ -102,6 +109,7 @@ function proses() {
   });
 
   let hasil = deret.filter(num => {
+    // Mode pencocokan
     if (main) {
       let kepala = num[0], ekor = num[num.length-1];
       let cocok = false;
@@ -111,8 +119,8 @@ function proses() {
       if (!cocok) return false;
     }
 
+    // Filter Shio (aktif untuk 2D, 3D, 4D)
     if (shioSelected.length) {
-      // ambil 2 digit terakhir untuk cek Shio
       let duaDigit = num.slice(-2);
       let masukShio = shioSelected.some(s => shioMap[s].includes(duaDigit));
       if (!masukShio) return false;
@@ -121,10 +129,8 @@ function proses() {
     return true;
   });
 
-  // Hilangkan duplikat + urutkan untuk 2D
-  if (jenis === "2d") {
-    hasil = [...new Set(hasil)].sort((a, b) => parseInt(a) - parseInt(b));
-  }
+  // Hilangkan duplikat + urutkan untuk semua jenis angka
+  hasil = [...new Set(hasil)].sort((a,b) => parseInt(a) - parseInt(b));
 
   document.getElementById("output").classList.remove("hidden");
   document.getElementById("hasilSingkat").innerText = hasil.join(" * ") || "(Tidak ada hasil)";
