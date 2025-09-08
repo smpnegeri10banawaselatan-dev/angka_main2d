@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pemangkasan Angka — Deteksi Kepala / Ekor</title>
+  <title>Pemangkasan Angka — 2D / 3D / 4D</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-900 p-4">
@@ -14,16 +14,32 @@
       Sistem akan memangkas angka yang tidak memiliki keterikatan dengan angka main.
     </p>
 
+    <!-- Input angka -->
     <label class="block font-semibold mb-1">Deretan angka</label>
-    <input id="sequence" type="text" value="" 
+    <input id="sequence" type="text" 
            class="w-full border rounded-lg p-2 mb-4" 
-           placeholder="Contoh: 23*32*48*84*95" />
+           placeholder="Contoh: 23*32*48*84*95*123*4567" />
 
     <label class="block font-semibold mb-1">Angka main</label>
-    <input id="main" type="text" value="" 
+    <input id="main" type="text" 
            class="w-full border rounded-lg p-2 mb-4" 
            placeholder="Contoh: 5678" />
 
+    <!-- Pilihan panjang angka -->
+    <label class="block font-semibold mb-1">Pilih Panjang Angka</label>
+    <div class="flex flex-col gap-2 mb-4 text-sm">
+      <label class="inline-flex items-center gap-2">
+        <input type="radio" name="digit" value="2" checked> 2D
+      </label>
+      <label class="inline-flex items-center gap-2">
+        <input type="radio" name="digit" value="3"> 3D
+      </label>
+      <label class="inline-flex items-center gap-2">
+        <input type="radio" name="digit" value="4"> 4D
+      </label>
+    </div>
+
+    <!-- Mode pencocokan -->
     <label class="block font-semibold mb-1">Mode pencocokan</label>
     <div class="flex flex-col gap-2 mb-4 text-sm">
       <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="any" checked> Any</label>
@@ -36,6 +52,7 @@
       Pangkas & Deteksi
     </button>
 
+    <!-- Hasil singkat -->
     <h3 class="text-lg font-semibold mt-6 mb-2">Hasil singkat</h3>
     <div class="flex flex-col sm:flex-row items-start gap-2">
       <div id="outShort" 
@@ -57,11 +74,12 @@
       <p id="filenamePreview" class="text-xs text-gray-500 mt-1"></p>
     </div>
 
+    <!-- Detail -->
     <h3 class="text-lg font-semibold mt-6 mb-2">Detail</h3>
     <div id="outDetail" class="overflow-x-auto text-sm"><em>(belum dijalankan)</em></div>
   </div>
 
-  <!-- Toast Notification -->
+  <!-- Toast -->
   <div id="toast" 
        class="hidden fixed bottom-4 right-4 bg-teal-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
        Hasil disalin!
@@ -79,14 +97,14 @@
                  .split(/\s+/)
                  .filter(Boolean);
     }
-    function uniqueChars(s){
-      return [...new Set(s.split(''))];
-    }
-    function analyze(sequenceArr, mainDigits, mode){
+    function uniqueChars(s){ return [...new Set(s.split(''))]; }
+
+    function analyze(sequenceArr, mainDigits, mode, digitLength){
       const mainSet = new Set(mainDigits);
       const kept = [];
       const rows = [];
       for(const num of sequenceArr){
+        if(num.length !== digitLength) continue; // filter otomatis sesuai pilihan
         const first = num[0];
         const last = num[num.length-1];
         const matchFirst = mainSet.has(first);
@@ -122,15 +140,19 @@
       const seqText = document.getElementById('sequence').value;
       const mainText = document.getElementById('main').value;
       const mode = document.querySelector('input[name="mode"]:checked').value;
+      const digitLength = parseInt(document.querySelector('input[name="digit"]:checked').value);
       const arr = normalizeList(seqText);
       const mainDigits = uniqueChars(mainText);
-      const res = analyze(arr, mainDigits, mode);
+      const res = analyze(arr, mainDigits, mode, digitLength);
+
       document.getElementById('outShort').innerHTML = 
         res.kept.length ? `<code>${res.kept.join('*')}</code>` : '<em>Tidak ada yang cocok</em>';
+
       if(res.rows.length === 0){
         document.getElementById('outDetail').innerHTML = '<em>Tidak ada angka yang cocok.</em>';
         return;
       }
+
       let html = '<table class="min-w-full border text-sm table-auto break-words"><thead><tr class="bg-gray-100"><th class="p-2 border">Angka</th><th class="p-2 border">Jenis</th><th class="p-2 border">Digit Cocok</th></tr></thead><tbody>';
       for(const r of res.rows){
         const status = r.status === 'both' ? 'Kepala & Ekor' : r.status;
