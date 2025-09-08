@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pemangkasan Angka — 2D / 3D / 4D</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 p-4">
+  <div class="max-w-2xl mx-auto bg-white shadow-lg rounded-2xl p-6 relative">
+    <h1 class="text-2xl font-bold mb-4">Pemangkasan Angka — 2D / 3D / 4D</h1>
+    <p class="mb-4 text-sm text-gray-600">
+      Masukkan deretan angka (2D, 3D, atau 4D) lalu angka <strong>main</strong>. 
+      Sistem akan memangkas angka yang tidak memiliki keterikatan dengan angka main.
+    </p>
+
+    <!-- Input Angka -->
+    <label class="block font-semibold mb-1">Deretan angka</label>
+    <input id="sequence" type="text" value="" 
+           class="w-full border rounded-lg p-2 mb-4" 
+           placeholder="Contoh: 23*324*4829*84*95*1234" />
+
+    <label class="block font-semibold mb-1">Angka main</label>
+    <input id="main" type="text" value="" 
+           class="w-full border rounded-lg p-2 mb-4" 
+           placeholder="Contoh: 5678" />
+
+    <!-- Mode -->
+    <label class="block font-semibold mb-1">Mode pencocokan</label>
+    <div class="flex flex-col gap-2 mb-4 text-sm">
+      <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="any" checked> Any</label>
+      <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="kepala"> Kepala</label>
+      <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="ekor"> Ekor</label>
+    </div>
+
+    <button id="run" 
+            class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">
+      Pangkas & Deteksi
+    </button>
+
+    <!-- Output -->
+    <h3 class="text-lg font-semibold mt-6 mb-2">Hasil singkat</h3>
+    <div class="flex flex-col sm:flex-row items-start gap-2">
+      <div id="outShort" 
+           class="bg-gray-50 border rounded-lg p-2 text-sm flex-1 whitespace-pre-wrap break-words w-full">
+        <em>(belum dijalankan)</em>
+      </div>
+      <div class="flex gap-2">
+        <button id="copyBtn" 
+                class="bg-gray-200 hover:bg-gray-300 text-sm px-3 py-1 rounded-lg">Salin</button>
+        <button id="downloadBtn" 
+                class="bg-blue-200 hover:bg-blue-300 text-sm px-3 py-1 rounded-lg">Unduh</button>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <input id="filenameInput" type="text" 
+             class="w-full border rounded-lg p-2 text-sm" 
+             placeholder="Nama file (opsional, tanpa .txt)" />
+      <p id="filenamePreview" class="text-xs text-gray-500 mt-1"></p>
+    </div>
+
+    <h3 class="text-lg font-semibold mt-6 mb-2">Detail</h3>
+    <div id="outDetail" class="overflow-x-auto text-sm"><em>(belum dijalankan)</em></div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" 
+       class="hidden fixed bottom-4 right-4 bg-teal-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm transition transform">
+       Hasil disalin!
+  </div>
+  <div id="toastDownload" 
+       class="hidden fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm transition transform">
+       File berhasil diunduh!
+  </div>
+
+  <script>
+    function normalizeList(text){
+      return text.replace(/[,;|]+/g, ' ')
+                 .replace(/\*/g, ' ')
+                 .trim()
+                 .split(/\s+/)
+                 .filter(Boolean);
+    }
+    function uniqueChars(s){ return [...new Set(s.split(''))]; }
+
+    function analyze(sequenceArr, mainDigits, mode){
+      const mainSet = new Set(mainDigits);
+      const kept = [];
+      const rows = [];
+
+      for(const num of sequenceArr){
+        const first = num[0];
+        const last = num[num.length-1];
+        const matchFirst = mainSet.has(first);
+        const matchLast = mainSet.has(last);
+        const anyMatch = [...num].some(ch => mainSet.has(ch));
+
+        let take = false;
+        if(mode === 'any') take = anyMatch;
+        if(mode === 'kepala') take = matchFirst;
+        if(mode === 'ekor') take = matchLast;
+
+        if(take){
+          kept.push(num);
+          let status = 'none';
+          if(matchFirst && matchLast) status = 'Kepala & Ekor';
+          else if(matchFirst) status = 'Kepala';
+          else if(matchLast) status = 'Ekor';
+          else status = 'Any';
+
+          const matchedDigits = [];
+          for(const ch of uniqueChars(num)){
+            if(mainSet.has(ch)){
+              const pos = [];
+              if(num[0] === ch) pos.push('kepala');
+              if(num[num.length-1] === ch) pos.push('ekor');
+              if(num.length === 4){
+                if(num[1] === ch) pos.push('kop');
+                if(num[2] === ch) pos.push('kepala');
+              }
+              matchedDigits.push({digit: ch, pos});
+            }
+          }
+          rows.push({num, status, matchedDigits});
+        }
+      }
+      return {kept, rows};
+    }
+
+    // Jalankan Analisis
+    document.getElementById('run').addEventListener('click', ()=>{
+      const seqText = document.getElementById('sequence').value;
+      const mainText = document.getElementById('main').value;
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const arr = normalizeList(seqText);
+      const mainDigits = uniqueChars(mainText);
+      const res = analyze(arr, mainDigits, mode);
+
+      document.getElementById('outShort').innerHTML = 
+        res.kept.length ? `<code>${res.kept.join('*')}</code>` : '<em>Tidak ada yang cocok</em>';
+
+      if(res.rows.length === 0){
+        document.getElementById('outDetail').innerHTML = '<em>Tidak ada angka yang cocok.</em>';
+        return;
+      }
+
+      let html = '<table class="min-w-full border text-sm table-auto break-words"><thead><tr class="bg-gray-100"><th class="p-2 border">Angka</th><th class="p-2 border">Jenis</th><th class="p-2 border">Digit Cocok</th></tr></thead><tbody>';
+      for(const r of res.rows){
+        const matchedText = r.matchedDigits.map(m => `${m.digit} (${m.pos.join(',')})`).join(', ');
+        html += `<tr>
+          <td class="border p-2 break-words whitespace-pre-wrap">${r.num}</td>
+          <td class="border p-2">${r.status}</td>
+          <td class="border p-2 break-words whitespace-pre-wrap">${matchedText}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+      document.getElementById('outDetail').innerHTML = html;
+    });
+
+    // Tombol Salin
+    document.getElementById('copyBtn').addEventListener('click', ()=>{
+      const text = document.getElementById('outShort').innerText;
+      if(text && !text.includes("belum dijalankan") && !text.includes("Tidak ada yang cocok")){
+        navigator.clipboard.writeText(text).then(()=>{
+          const toast = document.getElementById('toast');
+          toast.classList.remove('hidden');
+          toast.classList.add('opacity-100','translate-y-0');
+          setTimeout(()=> toast.classList.add('hidden'), 2000);
+        });
+      }
+    });
+
+    // Tombol Unduh
+    document.getElementById('downloadBtn').addEventListener('click', ()=>{
+      const text = document.getElementById('outShort').innerText;
+      if(text && !text.includes("belum dijalankan") && !text.includes("Tidak ada yang cocok")){
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth()+1).padStart(2,"0");
+        const dd = String(now.getDate()).padStart(2,"0");
+        const defaultName = `hasil-${yyyy}-${mm}-${dd}.txt`;
+
+        const customName = document.getElementById('filenameInput').value.trim();
+        const fileName = customName ? (customName.endsWith(".txt") ? customName : customName + ".txt") : defaultName;
+
+        const blob = new Blob([text], {type: "text/plain"});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(link.href);
+
+        const toastDownload = document.getElementById('toastDownload');
+        toastDownload.classList.remove('hidden');
+        toastDownload.classList.add('opacity-100','translate-y-0');
+        setTimeout(()=> toastDownload.classList.add('hidden'), 2000);
+      }
+    });
+
+    // Update preview nama file
+    document.getElementById('filenameInput').addEventListener('input', (e)=>{
+      const val = e.target.value.trim();
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth()+1).padStart(2,"0");
+      const dd = String(now.getDate()).padStart(2,"0");
+      const defaultName = `hasil-${yyyy}-${mm}-${dd}.txt`;
+      document.getElementById('filenamePreview').textContent = 
+        "Nama file: " + (val ? (val.endsWith(".txt") ? val : val + ".txt") : defaultName);
+    });
+
+    // Auto run pertama kali
+    document.getElementById('run').click();
+  </script>
+</body>
+</html>
