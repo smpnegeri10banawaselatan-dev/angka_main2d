@@ -10,7 +10,7 @@
   <div class="max-w-2xl mx-auto bg-white shadow-lg rounded-2xl p-6 relative">
     <h1 class="text-2xl font-bold mb-4">Pemangkasan Angka — Deteksi Kepala / Ekor + SHIO</h1>
     <p class="mb-4 text-sm text-gray-600">
-      Masukkan deretan angka lalu angka <strong>main</strong>. 
+      Masukkan deretan angka lalu angka <strong>main</strong> (bisa beberapa baris). 
       Sistem akan memangkas angka yang tidak memiliki keterikatan dengan angka main, lalu difilter berdasarkan pilihan Shio.
     </p>
 
@@ -20,10 +20,10 @@
            class="w-full border rounded-lg p-2 mb-4" 
            placeholder="Contoh: 23*32*48*84*95*123*4567" />
 
-    <label class="block font-semibold mb-1">Angka main</label>
-    <input id="main" type="text" 
-           class="w-full border rounded-lg p-2 mb-4" 
-           placeholder="Contoh: 5678" />
+    <label class="block font-semibold mb-1">Angka main (maks. 10 baris)</label>
+    <textarea id="main" rows="5"
+           class="w-full border rounded-lg p-2 mb-4"
+           placeholder="Contoh:\n5678\n9012"></textarea>
 
     <!-- Pilihan panjang angka -->
     <label class="block font-semibold mb-1">Pilih Panjang Angka</label>
@@ -118,7 +118,9 @@
                  .split(/\s+/)
                  .filter(Boolean);
     }
-    function uniqueChars(s){ return [...new Set(s.split(''))]; }
+    function uniqueCharsFromText(text){
+      return [...new Set(text.replace(/\s+/g,'').split(''))];
+    }
 
     function analyze(sequenceArr, mainDigits, mode, digitLength){
       const mainSet = new Set(mainDigits);
@@ -155,7 +157,7 @@
       const shio = document.getElementById('shioSelect').value;
 
       const arr = normalizeList(seqText);
-      const mainDigits = uniqueChars(mainText);
+      const mainDigits = uniqueCharsFromText(mainText);
       let res = analyze(arr, mainDigits, mode, digitLength);
 
       // Filter Shio jika bukan "all" dan digitLength = 2
