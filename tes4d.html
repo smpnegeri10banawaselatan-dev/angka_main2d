@@ -12,7 +12,7 @@
 
     <!-- Input angka -->
     <label class="block mb-2 text-sm font-medium">Deretan Angka (pisahkan dengan *)</label>
-    <textarea id="deret" class="w-full border p-2 rounded mb-4" rows="2" placeholder="Contoh: 23*32*48*84*95"></textarea>
+    <textarea id="deret" class="w-full border p-2 rounded mb-4" rows="2" placeholder="Contoh: 1234*5678*91011"></textarea>
 
     <label class="block mb-2 text-sm font-medium">Angka Main (maks 7 digit)</label>
     <input id="main" maxlength="7" class="w-full border p-2 rounded mb-4" placeholder="Contoh: 5678">
@@ -23,6 +23,7 @@
       <option value="asli">Asli</option>
       <option value="2d">2D (2 digit terakhir)</option>
       <option value="3d">3D (3 digit terakhir)</option>
+      <option value="4d">4D (4 digit terakhir)</option>
     </select>
 
     <!-- Mode -->
@@ -96,6 +97,7 @@ function proses() {
   const deret = deretRaw.map(num => {
     if (jenis === "2d") return num.slice(-2).padStart(2,"0");
     if (jenis === "3d") return num.slice(-3).padStart(3,"0");
+    if (jenis === "4d") return num.slice(-4).padStart(4,"0");
     return num;
   });
 
@@ -109,12 +111,10 @@ function proses() {
       if (!cocok) return false;
     }
 
-    if (shioSelected.length && jenis === "2d") {
-      // Shio filter hanya masuk akal untuk 2D
-      let masukShio = false;
-      shioSelected.forEach(s => {
-        if (shioMap[s].includes(num)) masukShio = true;
-      });
+    if (shioSelected.length) {
+      // ambil 2 digit terakhir untuk cek Shio
+      let duaDigit = num.slice(-2);
+      let masukShio = shioSelected.some(s => shioMap[s].includes(duaDigit));
       if (!masukShio) return false;
     }
 
