@@ -145,8 +145,12 @@
       const mainDigits = uniqueChars(mainText);
       const res = analyze(arr, mainDigits, mode, digitLength);
 
-      document.getElementById('outShort').innerHTML = 
-        res.kept.length ? `<code>${res.kept.join('*')}</code>` : '<em>Tidak ada yang cocok</em>';
+      if(res.kept.length){
+        document.getElementById('outShort').innerHTML = 
+          `<code>${res.kept.join('*')}</code> <br><span class="text-xs text-gray-500">(${res.kept.length} angka)</span>`;
+      } else {
+        document.getElementById('outShort').innerHTML = '<em>Tidak ada yang cocok</em>';
+      }
 
       if(res.rows.length === 0){
         document.getElementById('outDetail').innerHTML = '<em>Tidak ada angka yang cocok.</em>';
