@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pemangkasan Angka — 2D / 3D / 4D + SHIO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 p-4">
+  <div class="max-w-2xl mx-auto bg-white shadow-lg rounded-2xl p-6 relative">
+    <h1 class="text-2xl font-bold mb-4">Pemangkasan Angka — Deteksi Kepala / Ekor + SHIO</h1>
+    <p class="mb-4 text-sm text-gray-600">
+      Masukkan deretan angka lalu angka <strong>main</strong>. 
+      Sistem akan memangkas angka yang tidak memiliki keterikatan dengan angka main, lalu difilter berdasarkan pilihan Shio.
+    </p>
+
+    <!-- Input angka -->
+    <label class="block font-semibold mb-1">Deretan angka</label>
+    <input id="sequence" type="text" 
+           class="w-full border rounded-lg p-2 mb-4" 
+           placeholder="Contoh: 23*32*48*84*95*123*4567" />
+
+    <label class="block font-semibold mb-1">Angka main</label>
+    <input id="main" type="text" 
+           class="w-full border rounded-lg p-2 mb-4" 
+           placeholder="Contoh: 5678" />
+
+    <!-- Pilihan panjang angka -->
+    <label class="block font-semibold mb-1">Pilih Panjang Angka</label>
+    <div class="flex flex-col gap-2 mb-4 text-sm">
+      <label class="inline-flex items-center gap-2">
+        <input type="radio" name="digit" value="2" checked> 2D
+      </label>
+      <label class="inline-flex items-center gap-2">
+        <input type="radio" name="digit" value="3"> 3D
+      </label>
+      <label class="inline-flex items-center gap-2">
+        <input type="radio" name="digit" value="4"> 4D
+      </label>
+    </div>
+
+    <!-- Mode pencocokan -->
+    <label class="block font-semibold mb-1">Mode pencocokan</label>
+    <div class="flex flex-col gap-2 mb-4 text-sm">
+      <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="any" checked> Any</label>
+      <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="kepala"> Kepala</label>
+      <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="ekor"> Ekor</label>
+    </div>
+
+    <!-- Pilihan Shio -->
+    <label class="block font-semibold mb-1">Filter Shio</label>
+    <select id="shioSelect" class="w-full border rounded-lg p-2 mb-4">
+      <option value="all" selected>Semua Shio</option>
+      <option value="1">Shio 1</option>
+      <option value="2">Shio 2</option>
+      <option value="3">Shio 3</option>
+      <option value="4">Shio 4</option>
+      <option value="5">Shio 5</option>
+      <option value="6">Shio 6</option>
+      <option value="7">Shio 7</option>
+      <option value="8">Shio 8</option>
+      <option value="9">Shio 9</option>
+      <option value="10">Shio 10</option>
+      <option value="11">Shio 11</option>
+      <option value="12">Shio 12</option>
+    </select>
+
+    <button id="run" 
+            class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">
+      Pangkas & Deteksi
+    </button>
+
+    <!-- Hasil singkat -->
+    <h3 class="text-lg font-semibold mt-6 mb-2">Hasil singkat</h3>
+    <div class="flex flex-col sm:flex-row items-start gap-2">
+      <div id="outShort" 
+           class="bg-gray-50 border rounded-lg p-2 text-sm flex-1 whitespace-pre-wrap break-words w-full">
+        <em>(belum dijalankan)</em>
+      </div>
+      <div class="flex gap-2">
+        <button id="copyBtn" 
+                class="bg-gray-200 hover:bg-gray-300 text-sm px-3 py-1 rounded-lg">Salin</button>
+      </div>
+    </div>
+
+    <!-- Detail -->
+    <h3 class="text-lg font-semibold mt-6 mb-2">Detail</h3>
+    <div id="outDetail" class="overflow-x-auto text-sm"><em>(belum dijalankan)</em></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" 
+       class="hidden fixed bottom-4 right-4 bg-teal-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+       Hasil disalin!
+  </div>
+
+  <script>
+    // Data Shio (1–12), tiap shio kelipatan 12
+    const shioMap = {
+      1: ["13","25","37","49","61","73","85","97"],
+      2: ["14","26","38","50","62","74","86","98"],
+      3: ["15","27","39","51","63","75","87","99"],
+      4: ["16","28","40","52","64","76","88"],
+      5: ["17","29","41","53","65","77","89"],
+      6: ["18","30","42","54","66","78","90"],
+      7: ["19","31","43","55","67","79","91"],
+      8: ["20","32","44","56","68","80","92"],
+      9: ["21","33","45","57","69","81","93"],
+      10:["22","34","46","58","70","82","94"],
+      11:["23","35","47","59","71","83","95"],
+      12:["24","36","48","60","72","84","96"]
+    };
+
+    function normalizeList(text){
+      return text.replace(/[,;|]+/g, ' ')
+                 .replace(/\*/g, ' ')
+                 .trim()
+                 .split(/\s+/)
+                 .filter(Boolean);
+    }
+    function uniqueChars(s){ return [...new Set(s.split(''))]; }
+
+    function analyze(sequenceArr, mainDigits, mode, digitLength){
+      const mainSet = new Set(mainDigits);
+      const kept = [];
+      const rows = [];
+      for(const num of sequenceArr){
+        if(num.length !== digitLength) continue;
+        const first = num[0];
+        const last = num[num.length-1];
+        const matchFirst = mainSet.has(first);
+        const matchLast = mainSet.has(last);
+        const anyMatch = [...num].some(ch => mainSet.has(ch));
+        let take = false;
+        if(mode === 'any') take = anyMatch;
+        if(mode === 'kepala') take = matchFirst;
+        if(mode === 'ekor') take = matchLast;
+        if(take){
+          kept.push(num);
+          let status = 'none';
+          if(matchFirst && matchLast) status = 'both';
+          else if(matchFirst) status = 'kepala';
+          else if(matchLast) status = 'ekor';
+          rows.push({num, status});
+        }
+      }
+      return {kept, rows};
+    }
+
+    document.getElementById('run').addEventListener('click', ()=>{
+      const seqText = document.getElementById('sequence').value;
+      const mainText = document.getElementById('main').value;
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const digitLength = parseInt(document.querySelector('input[name="digit"]:checked').value);
+      const shio = document.getElementById('shioSelect').value;
+
+      const arr = normalizeList(seqText);
+      const mainDigits = uniqueChars(mainText);
+      let res = analyze(arr, mainDigits, mode, digitLength);
+
+      // Filter Shio jika bukan "all" dan digitLength = 2
+      if(shio !== "all" && digitLength === 2){
+        const allowed = new Set(shioMap[shio]);
+        res.kept = res.kept.filter(n => allowed.has(n));
+        res.rows = res.rows.filter(r => allowed.has(r.num));
+      }
+
+      if(res.kept.length){
+        document.getElementById('outShort').innerHTML = 
+          `<code>${res.kept.join('*')}</code> <br><span class="text-xs text-gray-500">(${res.kept.length} angka)</span>`;
+      } else {
+        document.getElementById('outShort').innerHTML = '<em>Tidak ada yang cocok</em>';
+      }
+
+      if(res.rows.length === 0){
+        document.getElementById('outDetail').innerHTML = '<em>Tidak ada angka yang cocok.</em>';
+        return;
+      }
+
+      let html = '<table class="min-w-full border text-sm table-auto break-words"><thead><tr class="bg-gray-100"><th class="p-2 border">Angka</th><th class="p-2 border">Jenis</th></tr></thead><tbody>';
+      for(const r of res.rows){
+        const status = r.status === 'both' ? 'Kepala & Ekor' : r.status;
+        html += `<tr>
+          <td class="border p-2 break-words whitespace-pre-wrap">${r.num}</td>
+          <td class="border p-2">${status}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+      document.getElementById('outDetail').innerHTML = html;
+    });
+
+    // Tombol Salin
+    document.getElementById('copyBtn').addEventListener('click', ()=>{
+      const text = document.getElementById('outShort').innerText;
+      if(text && !text.includes("belum dijalankan") && !text.includes("Tidak ada yang cocok")){
+        navigator.clipboard.writeText(text).then(()=>{
+          const toast = document.getElementById('toast');
+          toast.classList.remove('hidden');
+          setTimeout(()=> toast.classList.add('hidden'), 2000);
+        });
+      }
+    });
+
+    // Auto run pertama kali
+    document.getElementById('run').click();
+  </script>
+</body>
+</html>
