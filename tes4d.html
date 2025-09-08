@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pemangkasan Angka dengan Shio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4 font-sans">
+  <div class="max-w-lg mx-auto bg-white p-4 rounded-xl shadow">
+    <h1 class="text-xl font-bold mb-4 text-center">Pemangkasan Angka</h1>
+
+    <!-- Input angka -->
+    <label class="block mb-2 text-sm font-medium">Deretan Angka (pisahkan dengan *)</label>
+    <textarea id="deret" class="w-full border p-2 rounded mb-4" rows="2" placeholder="Contoh: 23*32*48*84*95"></textarea>
+
+    <label class="block mb-2 text-sm font-medium">Angka Main (maks 7 digit)</label>
+    <input id="main" maxlength="7" class="w-full border p-2 rounded mb-4" placeholder="Contoh: 5678">
+
+    <!-- Jenis angka -->
+    <label class="block mb-2 text-sm font-medium">Jenis Angka</label>
+    <select id="jenis" class="w-full border p-2 rounded mb-4">
+      <option value="asli">Asli</option>
+      <option value="2d">2D (2 digit terakhir)</option>
+      <option value="3d">3D (3 digit terakhir)</option>
+    </select>
+
+    <!-- Mode -->
+    <label class="block mb-2 text-sm font-medium">Mode Pencocokan</label>
+    <select id="mode" class="w-full border p-2 rounded mb-4">
+      <option value="any">Any</option>
+      <option value="kepala">Kepala</option>
+      <option value="ekor">Ekor</option>
+    </select>
+
+    <!-- Shio -->
+    <label class="block mb-2 text-sm font-medium">Filter Shio</label>
+    <select id="shio" multiple class="w-full border p-2 rounded mb-4 h-32">
+      <option value="">(Tanpa Filter)</option>
+      <option value="1">Shio 1</option>
+      <option value="2">Shio 2</option>
+      <option value="3">Shio 3</option>
+      <option value="4">Shio 4</option>
+      <option value="5">Shio 5</option>
+      <option value="6">Shio 6</option>
+      <option value="7">Shio 7</option>
+      <option value="8">Shio 8</option>
+      <option value="9">Shio 9</option>
+      <option value="10">Shio 10</option>
+      <option value="11">Shio 11</option>
+      <option value="12">Shio 12</option>
+    </select>
+
+    <button onclick="proses()" class="w-full bg-blue-500 text-white py-2 rounded-lg">Proses</button>
+
+    <!-- Hasil -->
+    <div id="output" class="mt-4 hidden">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="font-semibold">Hasil Singkat (<span id="jumlah"></span> angka)</h2>
+        <button onclick="salin()" class="text-sm bg-gray-200 px-2 py-1 rounded">Salin</button>
+      </div>
+      <div id="hasilSingkat" class="border p-2 rounded bg-gray-50 whitespace-pre-wrap break-words"></div>
+
+      <h2 class="font-semibold mt-4">Hasil Detail</h2>
+      <div id="hasilDetail" class="border p-2 rounded bg-gray-50 whitespace-pre-wrap break-words"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg opacity-0 transform translate-y-4 transition-all duration-300">
+    Disalin!
+  </div>
+
+<script>
+function buatShioMap() {
+  let shio = {};
+  for (let i = 1; i <= 12; i++) shio[i] = [];
+  for (let n = 1; n <= 99; n++) {
+    let s = n % 12;
+    if (s === 0) s = 12;
+    shio[s].push(n.toString().padStart(2, "0"));
+  }
+  return shio;
+}
+
+const shioMap = buatShioMap();
+
+function proses() {
+  const deretRaw = document.getElementById("deret").value.split("*").map(s => s.trim()).filter(Boolean);
+  const main = document.getElementById("main").value.trim();
+  const mode = document.getElementById("mode").value;
+  const jenis = document.getElementById("jenis").value;
+  const shioSelected = Array.from(document.getElementById("shio").selectedOptions).map(o => o.value).filter(Boolean);
+
+  // transform angka sesuai jenis
+  const deret = deretRaw.map(num => {
+    if (jenis === "2d") return num.slice(-2).padStart(2,"0");
+    if (jenis === "3d") return num.slice(-3).padStart(3,"0");
+    return num;
+  });
+
+  let hasil = deret.filter(num => {
+    if (main) {
+      let kepala = num[0], ekor = num[num.length-1];
+      let cocok = false;
+      if (mode === "any") cocok = [...num].some(d => main.includes(d));
+      else if (mode === "kepala") cocok = main.includes(kepala);
+      else if (mode === "ekor") cocok = main.includes(ekor);
+      if (!cocok) return false;
+    }
+
+    if (shioSelected.length && jenis === "2d") {
+      // Shio filter hanya masuk akal untuk 2D
+      let masukShio = false;
+      shioSelected.forEach(s => {
+        if (shioMap[s].includes(num)) masukShio = true;
+      });
+      if (!masukShio) return false;
+    }
+
+    return true;
+  });
+
+  // Hilangkan duplikat + urutkan untuk 2D
+  if (jenis === "2d") {
+    hasil = [...new Set(hasil)].sort((a, b) => parseInt(a) - parseInt(b));
+  }
+
+  document.getElementById("output").classList.remove("hidden");
+  document.getElementById("hasilSingkat").innerText = hasil.join(" * ") || "(Tidak ada hasil)";
+  document.getElementById("hasilDetail").innerText = hasil.length ? hasil.map(h => `• ${h}`).join("\n") : "(Kosong)";
+  document.getElementById("jumlah").innerText = hasil.length;
+}
+
+function salin() {
+  const teks = document.getElementById("hasilSingkat").innerText;
+  navigator.clipboard.writeText(teks).then(() => {
+    const toast = document.getElementById("toast");
+    toast.classList.remove("opacity-0", "translate-y-4");
+    setTimeout(() => toast.classList.add("opacity-0", "translate-y-4"), 2000);
+  });
+}
+</script>
+</body>
+</html>
